@@ -1,8 +1,21 @@
 
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { User, LogOut } from "lucide-react";
 
 const Navbar = () => {
+  const { user, profile, signOut } = useAuth();
+
   return (
     <nav className="w-full px-6 py-4 flex items-center justify-between bg-white shadow-sm z-10">
       <Link 
@@ -13,18 +26,57 @@ const Navbar = () => {
       </Link>
       
       <div className="flex items-center gap-4">
-        <Link 
-          to="/login" 
-          className="text-creator-text hover:text-creator-purple transition-colors"
-        >
-          تسجيل الدخول
-        </Link>
-        
-        <Button
-          className="bg-creator-purple text-white hover:bg-creator-lightpurple transition-colors"
-        >
-          إنشاء حساب
-        </Button>
+        {user ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Avatar className="h-10 w-10">
+                  {profile?.avatar_url ? (
+                    <AvatarImage src={profile.avatar_url} alt={profile.username || user.email} />
+                  ) : (
+                    <AvatarFallback className="bg-creator-purple text-white">
+                      {profile?.username?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium">{profile?.full_name || 'المستخدم'}</p>
+                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                <span>الملف الشخصي</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={signOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>تسجيل الخروج</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <>
+            <Link 
+              to="/login" 
+              className="text-creator-text hover:text-creator-purple transition-colors"
+            >
+              تسجيل الدخول
+            </Link>
+            
+            <Button
+              className="bg-creator-purple text-white hover:bg-creator-lightpurple transition-colors"
+              asChild
+            >
+              <Link to="/signup">إنشاء حساب</Link>
+            </Button>
+          </>
+        )}
       </div>
     </nav>
   );

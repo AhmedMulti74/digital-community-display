@@ -1,9 +1,50 @@
 
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "تم تسجيل الدخول بنجاح",
+        description: "مرحباً بعودتك إلى منصة CreatorHub",
+      });
+      
+      navigate("/");
+    } catch (error: any) {
+      console.error("Error during login:", error);
+      
+      toast({
+        title: "خطأ في تسجيل الدخول",
+        description: error.message || "تأكد من صحة البريد الإلكتروني وكلمة المرور",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <main className="flex-1 flex items-center justify-center p-6">
@@ -21,7 +62,7 @@ const Login = () => {
             </p>
           </div>
           
-          <form className="space-y-5">
+          <form className="space-y-5" onSubmit={handleLogin}>
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-medium">
                 البريد الإلكتروني
@@ -31,6 +72,9 @@ const Login = () => {
                 type="email"
                 placeholder="أدخل بريدك الإلكتروني"
                 className="w-full"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
             
@@ -48,14 +92,18 @@ const Login = () => {
                 type="password"
                 placeholder="أدخل كلمة المرور"
                 className="w-full"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
             
             <Button
               type="submit"
               className="w-full bg-creator-purple hover:bg-creator-lightpurple transition-colors"
+              disabled={loading}
             >
-              تسجيل الدخول
+              {loading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
             </Button>
           </form>
           
