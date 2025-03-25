@@ -7,7 +7,7 @@ const communitiesData: Community[] = [
   {
     id: "1",
     title: "عشاق الموسيقى",
-    image: "/public/lovable-uploads/3b7bb45a-a281-4e2a-a79f-0a36f3bbb6d0.png",
+    image: "/lovable-uploads/3b7bb45a-a281-4e2a-a79f-0a36f3bbb6d0.png",
     language: "ENGLISH",
     members: 345,
     price: 9.99,
