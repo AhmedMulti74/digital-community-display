@@ -52,12 +52,14 @@ export const supabase = createClient<Database>(
 );
 
 // Utility function to execute Supabase queries with retry logic
-export const executeWithRetry = async <T>(queryFn: () => Promise<T>, maxRetries = MAX_RETRIES): Promise<T> => {
+export const executeWithRetry = async <T>(queryFn: () => Promise<T> | T, maxRetries = MAX_RETRIES): Promise<T> => {
   let lastError;
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      return await queryFn();
+      // Ensure we're dealing with a Promise by calling Promise.resolve
+      const result = await Promise.resolve(queryFn());
+      return result;
     } catch (error: any) {
       console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries}):`, error);
       lastError = error;

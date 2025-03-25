@@ -33,23 +33,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string) => {
     try {
-      // Use executeWithRetry with a function that returns a Promise
-      const { data, error } = await executeWithRetry(() => {
-        return supabase
+      // Wrap the Supabase query in an async function that awaits the result
+      const result = await executeWithRetry(async () => {
+        const response = await supabase
           .from("profiles")
           .select("*")
           .eq("id", userId)
           .single();
+        
+        return response;
       });
-
-      if (error) {
-        console.error("Error fetching profile:", error);
+      
+      // Now we can safely access data and error
+      if (result.error) {
+        console.error("Error fetching profile:", result.error);
         return;
       }
 
-      setProfile(data);
+      setProfile(result.data);
       // Store profile in localStorage for persistence
-      localStorage.setItem('creatorhub-profile', JSON.stringify(data));
+      localStorage.setItem('creatorhub-profile', JSON.stringify(result.data));
     } catch (error) {
       console.error("Failed to fetch profile:", error);
     }
