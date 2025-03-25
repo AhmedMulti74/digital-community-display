@@ -1,6 +1,7 @@
 
 import { Search } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 declare global {
   interface Window {
@@ -13,6 +14,7 @@ declare global {
 }
 
 const Hero = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState(() => {
     // Recover search from localStorage if available
     try {
@@ -38,6 +40,13 @@ const Hero = () => {
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim() !== '') {
+      // Navigate to home page with search query if not already there
+      navigate('/', { replace: true });
+    }
+  };
+
   return (
     <div className="w-full bg-creator-purple text-white p-8 rounded-xl">
       <div className="flex items-center gap-2 mb-4">
@@ -55,6 +64,7 @@ const Hero = () => {
           placeholder="ابحث عن المجتمعات..."
           value={searchQuery}
           onChange={handleSearch}
+          onKeyPress={handleKeyPress}
           className="w-full py-3 px-10 rounded-full text-creator-text focus:outline-none focus:ring-2 focus:ring-white"
         />
         <Search className="absolute left-3 top-3 text-gray-400" size={20} />

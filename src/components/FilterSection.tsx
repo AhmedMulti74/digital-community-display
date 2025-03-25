@@ -1,6 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { Music, Heart, Book, Users, Calendar, MessageCircle, DollarSign, Star, Monitor, Search, Briefcase } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 type Category = {
   id: string;
@@ -50,11 +50,11 @@ declare global {
 }
 
 const FilterSection = () => {
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeLanguage, setActiveLanguage] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Update global filters when local state changes
   useEffect(() => {
     if (window.communityFilters) {
       window.communityFilters.setCategory(activeCategory);
@@ -76,6 +76,12 @@ const FilterSection = () => {
     }
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim() !== '') {
+      navigate('/', { replace: true });
+    }
+  };
+
   return (
     <div className="w-full space-y-4">
       <div className="relative w-full max-w-2xl mb-6">
@@ -84,6 +90,7 @@ const FilterSection = () => {
           placeholder="ابحث عن المجتمعات..."
           value={searchQuery}
           onChange={handleSearch}
+          onKeyPress={handleKeyPress}
           className="w-full py-3 px-10 rounded-full text-creator-text focus:outline-none focus:ring-2 focus:ring-creator-purple"
         />
         <Search className="absolute left-3 top-3 text-gray-400" size={20} />
