@@ -19,12 +19,14 @@ const Login = () => {
     try {
       setLoading(true);
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      console.log("Login successful:", data);
 
       toast({
         title: "تم تسجيل الدخول بنجاح",

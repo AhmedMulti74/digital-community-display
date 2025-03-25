@@ -67,6 +67,28 @@ const SignUp = () => {
         return;
       }
 
+      // Check if profile was created by trigger
+      let { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (!profileData) {
+        // Create profile manually if trigger didn't work
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            { 
+              id: authData.user.id,
+              full_name: fullName,
+              username
+            }
+          ]);
+
+        if (profileError) throw profileError;
+      }
+
       // Upload avatar if selected
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();

@@ -21,6 +21,7 @@ const Navbar = () => {
 
   const handleSignOut = async () => {
     try {
+      console.log("Handling sign out in Navbar");
       await signOut();
       toast({
         title: "تم تسجيل الخروج",

@@ -1,223 +1,241 @@
 
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Navbar from "@/components/Navbar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Upload, User } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 const Profile = () => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const [fullName, setFullName] = useState(profile?.full_name || "");
-  const [username, setUsername] = useState(profile?.username || "");
-  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
-  const [uploading, setUploading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [updating, setUpdating] = useState(false);
 
-  // Redirect if not logged in
-  React.useEffect(() => {
+  useEffect(() => {
     if (!loading && !user) {
       navigate("/login");
     }
-  }, [user, loading, navigate]);
+    
+    if (profile) {
+      setFullName(profile.full_name || "");
+      setUsername(profile.username || "");
+      setAvatarPreview(profile.avatar_url || null);
+    }
+  }, [user, profile, loading, navigate]);
 
-  async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
-    try {
-      setUploading(true);
-      
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error("يجب اختيار صورة");
-      }
-      
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user?.id}-${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
-      
-      // Upload the file to Supabase storage
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-        
-      if (uploadError) {
-        throw uploadError;
-      }
-      
-      // Get the public URL
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-        
-      setAvatarUrl(data.publicUrl);
-      
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user) {
       toast({
-        title: "تم رفع الصورة بنجاح",
-        description: "تم تحديث صورة الملف الشخصي",
-      });
-    } catch (error) {
-      toast({
-        title: "خطأ في رفع الصورة",
-        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+        title: "غير مسجل الدخول",
+        description: "يجب تسجيل الدخول أولاً",
         variant: "destructive",
       });
-      console.error("Error uploading avatar:", error);
-    } finally {
-      setUploading(false);
+      return;
     }
-  }
-  
-  async function updateProfile() {
+    
     try {
-      setSaving(true);
+      setUpdating(true);
       
-      if (!user) throw new Error("يجب تسجيل الدخول");
-      
+      // Prepare update object
       const updates = {
         id: user.id,
         full_name: fullName,
-        username,
-        avatar_url: avatarUrl,
+        username: username,
         updated_at: new Date().toISOString(),
       };
       
-      const { error } = await supabase
+      // Upload new avatar if selected
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const fileName = `${user.id}.${fileExt}`;
+        const filePath = `${fileName}`;
+        
+        // Check if avatars bucket exists and create it if it doesn't
+        try {
+          // Try to get bucket information to see if it exists
+          const { error } = await supabase.storage.getBucket('avatars');
+          
+          if (error && error.message.includes('does not exist')) {
+            // Bucket doesn't exist, create it
+            const { error: createError } = await supabase.storage.createBucket('avatars', {
+              public: true,
+              fileSizeLimit: 5242880, // 5MB
+            });
+            
+            if (createError) {
+              console.error('Error creating avatars bucket:', createError);
+              throw createError;
+            }
+            
+            // Set public access policy
+            const { error: policyError } = await supabase.storage.from('avatars').setPublic(true);
+            if (policyError) {
+              console.error('Error setting public policy for avatars bucket:', policyError);
+              throw policyError;
+            }
+          }
+        } catch (bucketError) {
+          console.error('Error handling avatars bucket:', bucketError);
+        }
+        
+        // Upload the avatar
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, avatarFile, {
+            upsert: true,
+          });
+
+        if (uploadError) throw uploadError;
+        
+        // Get public URL
+        const { data: publicUrlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+          
+        // Add avatar URL to updates
+        Object.assign(updates, { avatar_url: publicUrlData.publicUrl });
+      }
+      
+      // Update profile
+      const { error: updateError } = await supabase
         .from('profiles')
         .update(updates)
         .eq('id', user.id);
         
-      if (error) throw error;
+      if (updateError) throw updateError;
+      
+      // Refresh profile in context
+      await refreshProfile();
       
       toast({
         title: "تم تحديث الملف الشخصي",
-        description: "تم حفظ التغييرات بنجاح",
+        description: "تم تحديث بيانات الملف الشخصي بنجاح",
       });
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
       toast({
         title: "خطأ في تحديث الملف الشخصي",
-        description: error instanceof Error ? error.message : "حدث خطأ غير متوقع",
+        description: error.message || "حدث خطأ أثناء تحديث الملف الشخصي",
         variant: "destructive",
       });
-      console.error("Error updating profile:", error);
     } finally {
-      setSaving(false);
+      setUpdating(false);
     }
-  }
-  
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-creator-purple" />
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-lg">جاري التحميل...</p>
       </div>
     );
   }
-  
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      
-      <main className="flex-1 px-6 py-8 max-w-3xl mx-auto w-full">
-        <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
-          <h1 className="text-2xl font-bold text-creator-text text-right">الملف الشخصي</h1>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto py-8 px-4">
+        <div className="bg-white rounded-lg shadow-sm p-6 md:p-8 max-w-3xl mx-auto">
+          <h1 className="text-2xl font-bold mb-6 text-center">الملف الشخصي</h1>
           
-          <div className="flex flex-col items-center space-y-4">
-            <div className="relative">
-              <Avatar className="h-24 w-24 border-2 border-creator-purple">
-                {avatarUrl ? (
-                  <AvatarImage src={avatarUrl} alt={fullName || "صورة المستخدم"} />
-                ) : (
-                  <AvatarFallback className="bg-creator-purple text-white text-xl">
-                    {fullName?.charAt(0) || username?.charAt(0) || user?.email?.charAt(0) || 'U'}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-              
-              <label 
-                htmlFor="avatar-upload" 
-                className="absolute bottom-0 right-0 bg-creator-purple text-white p-1.5 rounded-full cursor-pointer hover:bg-creator-lightpurple transition-colors"
-              >
-                <Camera size={16} />
-                <span className="sr-only">تغيير الصورة</span>
-              </label>
-              
-              <input
-                id="avatar-upload"
-                type="file"
-                accept="image/*"
-                onChange={uploadAvatar}
-                className="hidden"
-                disabled={uploading}
-              />
+          <div className="mb-8 flex flex-col items-center">
+            <Label htmlFor="avatar" className="cursor-pointer">
+              <div className="relative group">
+                <Avatar className="w-32 h-32 border-2 border-creator-purple group-hover:opacity-90 transition-all">
+                  {avatarPreview ? (
+                    <AvatarImage src={avatarPreview} alt="الصورة الشخصية" />
+                  ) : (
+                    <AvatarFallback className="bg-creator-purple text-white flex items-center justify-center">
+                      <User className="h-12 w-12" />
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Upload className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </Label>
+            <Input
+              id="avatar"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
+            
+            <div className="mt-4 text-center">
+              <h2 className="text-xl font-semibold">{profile?.full_name || "المستخدم"}</h2>
+              <p className="text-gray-500">{user?.email}</p>
             </div>
-            {uploading && <p className="text-sm text-gray-500">جاري رفع الصورة...</p>}
           </div>
           
-          <div className="space-y-4 text-right">
+          <Separator className="my-6" />
+          
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email" className="block">البريد الإلكتروني</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                value={user?.email || ""} 
-                disabled 
-                className="text-right bg-gray-50"
-                dir="rtl"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="fullName" className="block">الاسم الكامل</Label>
-              <Input 
-                id="fullName" 
-                type="text" 
-                value={fullName} 
-                onChange={(e) => setFullName(e.target.value)} 
+              <Label htmlFor="fullName">الاسم الكامل</Label>
+              <Input
+                id="fullName"
                 placeholder="أدخل اسمك الكامل"
-                className="text-right"
-                dir="rtl"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="username" className="block">اسم المستخدم</Label>
-              <Input 
-                id="username" 
-                type="text" 
-                value={username} 
-                onChange={(e) => setUsername(e.target.value)}
+              <Label htmlFor="username">اسم المستخدم</Label>
+              <Input
+                id="username"
                 placeholder="أدخل اسم المستخدم"
-                className="text-right"
-                dir="rtl"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
               />
             </div>
             
-            <Button 
-              onClick={updateProfile} 
-              className="w-full bg-creator-purple hover:bg-creator-lightpurple transition-colors mt-4"
-              disabled={saving}
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  جاري الحفظ...
-                </>
-              ) : (
-                "حفظ التغييرات"
-              )}
-            </Button>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">البريد الإلكتروني</Label>
+              <Input
+                id="email"
+                type="email"
+                value={user?.email || ""}
+                disabled
+                className="bg-gray-50"
+              />
+              <p className="text-xs text-gray-500">لا يمكن تغيير البريد الإلكتروني</p>
+            </div>
+            
+            <div className="flex justify-center mt-8">
+              <Button 
+                type="submit" 
+                className="bg-creator-purple hover:bg-creator-lightpurple transition-colors w-full max-w-xs"
+                disabled={updating}
+              >
+                {updating ? "جاري الحفظ..." : "حفظ التغييرات"}
+              </Button>
+            </div>
+          </form>
         </div>
-      </main>
+      </div>
     </div>
   );
 };
