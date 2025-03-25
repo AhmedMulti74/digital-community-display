@@ -2,7 +2,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
   session: Session | null;
@@ -35,6 +34,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       setProfile(data);
+      // Store profile in localStorage for persistence
+      localStorage.setItem('creatorhub-profile', JSON.stringify(data));
     } catch (error) {
       console.error("Failed to fetch profile:", error);
     }
@@ -47,17 +48,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    // First try to get stored profile from localStorage
+    const storedProfile = localStorage.getItem('creatorhub-profile');
+    if (storedProfile) {
+      try {
+        setProfile(JSON.parse(storedProfile));
+      } catch (error) {
+        console.error("Error parsing stored profile:", error);
+      }
+    }
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("Auth state changed:", event, session);
+        
+        // Update session and user state
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          // When session changes, fetch profile
           await fetchProfile(session.user.id);
-        } else {
+        } else if (event === 'SIGNED_OUT') {
+          // Clear profile when signed out
           setProfile(null);
+          localStorage.removeItem('creatorhub-profile');
         }
         
         setLoading(false);
@@ -95,6 +111,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         throw error;
       }
+      
+      // Clear profile and session data from localStorage
+      localStorage.removeItem('creatorhub-profile');
+      
+      // Reset states
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      
       console.log("Sign out successful");
     } catch (error) {
       console.error("Error signing out:", error);
