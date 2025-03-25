@@ -33,13 +33,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await executeWithRetry(() => 
-        supabase
+      // Use executeWithRetry with a function that returns a Promise
+      const { data, error } = await executeWithRetry(() => {
+        return supabase
           .from("profiles")
           .select("*")
           .eq("id", userId)
-          .single()
-      );
+          .single();
+      });
 
       if (error) {
         console.error("Error fetching profile:", error);
