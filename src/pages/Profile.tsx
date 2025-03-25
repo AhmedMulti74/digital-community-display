@@ -2,14 +2,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, User } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import ProfileAvatar from "@/components/profile/ProfileAvatar";
+import ProfileInfo from "@/components/profile/ProfileInfo";
+import ProfileForm from "@/components/profile/ProfileForm";
 
 const Profile = () => {
   const { user, profile, loading, refreshProfile } = useAuth();
@@ -19,7 +16,6 @@ const Profile = () => {
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
@@ -30,16 +26,11 @@ const Profile = () => {
     if (profile) {
       setFullName(profile.full_name || "");
       setUsername(profile.username || "");
-      setAvatarPreview(profile.avatar_url || null);
     }
   }, [user, profile, loading, navigate]);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setAvatarFile(file);
-      setAvatarPreview(URL.createObjectURL(file));
-    }
+  const handleAvatarChange = (file: File) => {
+    setAvatarFile(file);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -153,82 +144,25 @@ const Profile = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 md:p-8 max-w-3xl mx-auto">
           <h1 className="text-2xl font-bold mb-6 text-center">الملف الشخصي</h1>
           
-          <div className="mb-8 flex flex-col items-center">
-            <Label htmlFor="avatar" className="cursor-pointer">
-              <div className="relative group">
-                <Avatar className="w-32 h-32 border-2 border-creator-purple group-hover:opacity-90 transition-all">
-                  {avatarPreview ? (
-                    <AvatarImage src={avatarPreview} alt="الصورة الشخصية" />
-                  ) : (
-                    <AvatarFallback className="bg-creator-purple text-white flex items-center justify-center">
-                      <User className="h-12 w-12" />
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Upload className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </Label>
-            <Input
-              id="avatar"
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarChange}
-            />
-            
-            <div className="mt-4 text-center">
-              <h2 className="text-xl font-semibold">{profile?.full_name || "المستخدم"}</h2>
-              <p className="text-gray-500">{user?.email}</p>
-            </div>
-          </div>
+          <ProfileAvatar 
+            avatarUrl={profile?.avatar_url || null} 
+            onAvatarChange={handleAvatarChange} 
+          />
           
-          <Separator className="my-6" />
+          <ProfileInfo 
+            fullName={profile?.full_name || ""} 
+            email={user?.email} 
+          />
           
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">الاسم الكامل</Label>
-              <Input
-                id="fullName"
-                placeholder="أدخل اسمك الكامل"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="username">اسم المستخدم</Label>
-              <Input
-                id="username"
-                placeholder="أدخل اسم المستخدم"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="email">البريد الإلكتروني</Label>
-              <Input
-                id="email"
-                type="email"
-                value={user?.email || ""}
-                disabled
-                className="bg-gray-50"
-              />
-              <p className="text-xs text-gray-500">لا يمكن تغيير البريد الإلكتروني</p>
-            </div>
-            
-            <div className="flex justify-center mt-8">
-              <Button 
-                type="submit" 
-                className="bg-creator-purple hover:bg-creator-lightpurple transition-colors w-full max-w-xs"
-                disabled={updating}
-              >
-                {updating ? "جاري الحفظ..." : "حفظ التغييرات"}
-              </Button>
-            </div>
-          </form>
+          <ProfileForm 
+            fullName={fullName}
+            setFullName={setFullName}
+            username={username}
+            setUsername={setUsername}
+            email={user?.email}
+            onSubmit={handleSubmit}
+            updating={updating}
+          />
         </div>
       </div>
     </div>
