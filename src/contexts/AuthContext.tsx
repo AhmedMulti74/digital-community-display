@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface AuthContextType {
   session: Session | null;
@@ -46,25 +47,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // Try to restore session from localStorage first
-    const storedSession = localStorage.getItem('creatorhub-auth');
-    if (storedSession) {
-      try {
-        const parsedSession = JSON.parse(storedSession);
-        if (parsedSession?.currentSession) {
-          const sessionObj = parsedSession.currentSession;
-          setSession(sessionObj);
-          setUser(sessionObj?.user ?? null);
-          
-          if (sessionObj?.user) {
-            fetchProfile(sessionObj.user.id);
-          }
-        }
-      } catch (error) {
-        console.error("Error parsing stored session:", error);
-      }
-    }
-    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -73,14 +55,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Save session to localStorage
-          localStorage.setItem('creatorhub-auth', JSON.stringify({
-            currentSession: session
-          }));
           await fetchProfile(session.user.id);
         } else {
-          // Remove session from localStorage
-          localStorage.removeItem('creatorhub-auth');
           setProfile(null);
         }
         
@@ -96,10 +72,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(data.session?.user ?? null);
         
         if (data.session?.user) {
-          // Save session to localStorage
-          localStorage.setItem('creatorhub-auth', JSON.stringify({
-            currentSession: data.session
-          }));
           await fetchProfile(data.session.user.id);
         }
       } catch (error) {
@@ -123,8 +95,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) {
         throw error;
       }
-      // Clean up local storage
-      localStorage.removeItem('creatorhub-auth');
       console.log("Sign out successful");
     } catch (error) {
       console.error("Error signing out:", error);

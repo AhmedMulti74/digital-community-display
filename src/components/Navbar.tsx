@@ -13,19 +13,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { User, LogOut, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect, useState } from "react";
 
 const Navbar = () => {
-  const { user, profile, signOut, session } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-
-  useEffect(() => {
-    // إعادة تقييم حالة المصادقة كلما تغيرت البيانات ذات الصلة
-    setIsAuthenticated(!!user && !!session);
-    console.log("Auth state in Navbar:", { user, session, profile });
-  }, [user, session, profile]);
 
   const handleSignOut = async () => {
     try {
@@ -56,7 +48,7 @@ const Navbar = () => {
       </Link>
       
       <div className="flex items-center gap-4">
-        {isAuthenticated ? (
+        {user ? (
           <>
             <Button
               className="bg-creator-purple text-white hover:bg-creator-lightpurple transition-colors flex items-center gap-2"
@@ -71,10 +63,10 @@ const Navbar = () => {
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
                     {profile?.avatar_url ? (
-                      <AvatarImage src={profile.avatar_url} alt={profile.username || user?.email} />
+                      <AvatarImage src={profile.avatar_url} alt={profile.username || user.email} />
                     ) : (
                       <AvatarFallback className="bg-creator-purple text-white">
-                        {profile?.username?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                        {profile?.username?.charAt(0) || user.email?.charAt(0) || 'U'}
                       </AvatarFallback>
                     )}
                   </Avatar>
@@ -84,7 +76,7 @@ const Navbar = () => {
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium">{profile?.full_name || 'المستخدم'}</p>
-                    <p className="text-xs text-muted-foreground">{user?.email}</p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />

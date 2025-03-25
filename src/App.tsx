@@ -14,7 +14,6 @@ import CreateCommunity from "./pages/CreateCommunity";
 import NotFound from "./pages/NotFound";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
-import { silentlyPreventRefresh } from "@/utils/preventRefresh";
 
 // Create a client
 const queryClient = new QueryClient();
@@ -39,12 +38,6 @@ const App = () => {
   useEffect(() => {
     // Check if avatars bucket exists and is accessible
     checkStorageBucket();
-    
-    // Silently prevent browser refresh without showing any dialog
-    const cleanupFunction = silentlyPreventRefresh();
-    
-    // Cleanup function will be called when component unmounts
-    return cleanupFunction;
   }, []);
 
   return (
