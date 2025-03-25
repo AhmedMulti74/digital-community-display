@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Navbar from "@/components/Navbar";
@@ -8,12 +9,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const CommunityPage = () => {
-  const { id, tab = "forum" } = useParams();
+  const { id, tab = "about" } = useParams();
   const navigate = useNavigate();
   const [community, setCommunity] = useState(null);
   const [members, setMembers] = useState([]);
   const [profiles, setProfiles] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchCommunity = async () => {
@@ -28,12 +30,15 @@ const CommunityPage = () => {
 
           if (error) {
             console.error('Error fetching community:', error);
+            setError(error.message);
             return;
           }
 
+          console.log("Community data:", data);
           setCommunity(data);
         } catch (error) {
           console.error('Failed to fetch community details:', error);
+          setError('Failed to fetch community details');
         } finally {
           setLoading(false);
         }
@@ -57,6 +62,7 @@ const CommunityPage = () => {
             return;
           }
 
+          console.log("Members data:", membersData);
           setMembers(membersData || []);
 
           // Get unique user IDs
@@ -74,6 +80,7 @@ const CommunityPage = () => {
               return;
             }
 
+            console.log("Profiles data:", profilesData);
             // Create a map of profiles by user ID for easy lookup
             const profilesMap = {};
             profilesData?.forEach(profile => {
@@ -103,6 +110,42 @@ const CommunityPage = () => {
           <Skeleton className="h-12 w-64 mx-auto mb-6" />
           <Skeleton className="h-10 w-full mb-8" />
           <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8 text-center">
+          <h2 className="text-2xl font-bold text-destructive mb-4">خطأ</h2>
+          <p className="text-muted-foreground">{error}</p>
+          <button 
+            onClick={() => navigate('/')}
+            className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded"
+          >
+            العودة للرئيسية
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!community) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8 text-center">
+          <h2 className="text-2xl font-bold mb-4">لم يتم العثور على المجتمع</h2>
+          <p className="text-muted-foreground">لا يمكن العثور على بيانات هذا المجتمع</p>
+          <button 
+            onClick={() => navigate('/')}
+            className="mt-6 bg-primary text-primary-foreground px-4 py-2 rounded"
+          >
+            العودة للرئيسية
+          </button>
         </div>
       </div>
     );
@@ -300,7 +343,7 @@ const MembersSection = ({ members, profiles }) => {
                     <AvatarImage src={profile.avatar_url} alt={profile.username || 'عضو'} />
                   ) : (
                     <AvatarFallback className="bg-primary/20 text-primary">
-                      {profile.username?.charAt(0) || 'U'}
+                      {profile.username?.charAt(0) || profile.full_name?.charAt(0) || 'U'}
                     </AvatarFallback>
                   )}
                 </Avatar>
@@ -410,7 +453,7 @@ const AboutSection = ({ community }) => {
               alt={community.name}
               className="w-full h-full object-cover"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = "/public/lovable-uploads/3b7bb45a-a281-4e2a-a79f-0a36f3bbb6d0.png";
+                (e.target as HTMLImageElement).src = "/lovable-uploads/3b7bb45a-a281-4e2a-a79f-0a36f3bbb6d0.png";
               }}
             />
           </div>
@@ -423,7 +466,7 @@ const AboutSection = ({ community }) => {
               alt={community.name}
               className="w-16 h-16 rounded-full object-cover"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = "/public/lovable-uploads/3b7bb45a-a281-4e2a-a79f-0a36f3bbb6d0.png";
+                (e.target as HTMLImageElement).src = "/lovable-uploads/3b7bb45a-a281-4e2a-a79f-0a36f3bbb6d0.png";
               }}
             />
           )}

@@ -27,6 +27,7 @@ const Navbar = () => {
     const fetchCommunity = async () => {
       if (params.id) {
         try {
+          console.log("Fetching community for navbar with ID:", params.id);
           const { data, error } = await supabase
             .from('communities')
             .select('*')
@@ -34,13 +35,14 @@ const Navbar = () => {
             .single();
 
           if (error) {
-            console.error('Error fetching community:', error);
+            console.error('Error fetching community for navbar:', error);
             return;
           }
 
+          console.log("Community data in navbar:", data);
           setCommunity(data);
         } catch (error) {
-          console.error('Failed to fetch community details:', error);
+          console.error('Failed to fetch community details for navbar:', error);
         }
       } else {
         setCommunity(null);
@@ -76,15 +78,19 @@ const Navbar = () => {
           to={`/community/${community.id}`} 
           className="flex items-center gap-3 text-creator-purple text-xl font-bold transition-all duration-300 hover:opacity-90"
         >
-          {community.logo_url && (
+          {community.logo_url ? (
             <img 
               src={community.logo_url} 
               alt={community.name} 
               className="h-8 w-8 rounded-full object-cover"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = "/public/lovable-uploads/3b7bb45a-a281-4e2a-a79f-0a36f3bbb6d0.png";
+                (e.target as HTMLImageElement).src = "/lovable-uploads/3b7bb45a-a281-4e2a-a79f-0a36f3bbb6d0.png";
               }}
             />
+          ) : (
+            <div className="h-8 w-8 rounded-full bg-creator-purple flex items-center justify-center text-white">
+              {community.name.charAt(0)}
+            </div>
           )}
           <span>{community.name}</span>
         </Link>
