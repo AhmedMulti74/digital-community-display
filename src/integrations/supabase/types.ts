@@ -9,6 +9,54 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      communities: {
+        Row: {
+          banner_url: string | null
+          category: string | null
+          created_at: string
+          creator_id: string
+          description: string | null
+          id: string
+          language: string | null
+          logo_url: string | null
+          max_members: number | null
+          name: string
+          rules: string | null
+          updated_at: string
+          video_embed: string | null
+        }
+        Insert: {
+          banner_url?: string | null
+          category?: string | null
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          id?: string
+          language?: string | null
+          logo_url?: string | null
+          max_members?: number | null
+          name: string
+          rules?: string | null
+          updated_at?: string
+          video_embed?: string | null
+        }
+        Update: {
+          banner_url?: string | null
+          category?: string | null
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          id?: string
+          language?: string | null
+          logo_url?: string | null
+          max_members?: number | null
+          name?: string
+          rules?: string | null
+          updated_at?: string
+          video_embed?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
