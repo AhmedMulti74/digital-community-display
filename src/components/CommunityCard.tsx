@@ -7,9 +7,10 @@ export type Community = {
   image: string;
   language: string;
   members: number;
-  price?: number;
+  price?: number | null;
   description: string;
   icon: React.ReactNode;
+  category?: string;
 };
 
 interface CommunityCardProps {
@@ -24,6 +25,10 @@ const CommunityCard: React.FC<CommunityCardProps> = ({ community }) => {
           src={community.image} 
           alt={community.title}
           className="h-full w-full object-cover"
+          onError={(e) => {
+            // Fallback image if the main one fails to load
+            (e.target as HTMLImageElement).src = "/public/lovable-uploads/3b7bb45a-a281-4e2a-a79f-0a36f3bbb6d0.png";
+          }}
         />
         <div className="language-badge">{community.language}</div>
       </div>
@@ -45,7 +50,7 @@ const CommunityCard: React.FC<CommunityCardProps> = ({ community }) => {
           )}
         </div>
         
-        <p className="text-sm text-creator-textLight mb-4">
+        <p className="text-sm text-creator-textLight mb-4 line-clamp-2">
           {community.description}
         </p>
       </div>

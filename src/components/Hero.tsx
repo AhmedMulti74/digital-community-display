@@ -1,7 +1,29 @@
 
 import { Search } from "lucide-react";
+import { useState, useEffect } from "react";
+
+declare global {
+  interface Window {
+    communityFilters?: {
+      setCategory: (category: string) => void;
+      setLanguage: (language: string) => void;
+      setSearchQuery: (query: string) => void;
+    };
+  }
+}
 
 const Hero = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    
+    if (window.communityFilters) {
+      window.communityFilters.setSearchQuery(query);
+    }
+  };
+
   return (
     <div className="w-full bg-creator-purple text-white p-8 rounded-xl">
       <div className="flex items-center gap-2 mb-4">
@@ -17,6 +39,8 @@ const Hero = () => {
         <input 
           type="text"
           placeholder="ابحث عن المجتمعات..."
+          value={searchQuery}
+          onChange={handleSearch}
           className="w-full py-3 px-10 rounded-full text-creator-text focus:outline-none focus:ring-2 focus:ring-white"
         />
         <Search className="absolute left-3 top-3 text-gray-400" size={20} />
