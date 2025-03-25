@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -56,6 +55,7 @@ const App = () => {
               <Route path="/create-community" element={<CreateCommunity />} />
               <Route path="/community" element={<Community />} />
               <Route path="/community/:tab" element={<Community />} />
+              <Route path="/community/:id/:tab?" element={<Community />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

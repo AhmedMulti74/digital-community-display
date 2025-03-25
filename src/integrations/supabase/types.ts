@@ -20,6 +20,7 @@ export type Database = {
           language: string | null
           logo_url: string | null
           max_members: number | null
+          membership_fee: number
           name: string
           rules: string | null
           updated_at: string
@@ -35,6 +36,7 @@ export type Database = {
           language?: string | null
           logo_url?: string | null
           max_members?: number | null
+          membership_fee?: number
           name: string
           rules?: string | null
           updated_at?: string
@@ -50,6 +52,7 @@ export type Database = {
           language?: string | null
           logo_url?: string | null
           max_members?: number | null
+          membership_fee?: number
           name?: string
           rules?: string | null
           updated_at?: string

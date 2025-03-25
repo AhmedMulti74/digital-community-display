@@ -61,7 +61,8 @@ const Communities = () => {
           price: null,
           description: item.description || "No description available",
           icon: getIconForCategory(item.category),
-          category: item.category || "general"
+          category: item.category || "general",
+          membership_fee: item.membership_fee || 5 // Default to 5 if not set
         }));
 
         // Get member counts for each community
