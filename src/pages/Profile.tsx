@@ -60,47 +60,31 @@ const Profile = () => {
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const fileName = `${user.id}.${fileExt}`;
-        const filePath = `${fileName}`;
-        
-        // Check if avatars bucket exists and create it if it doesn't
-        try {
-          // Try to get bucket information to see if it exists
-          const { error } = await supabase.storage.getBucket('avatars');
-          
-          if (error && error.message.includes('does not exist')) {
-            // Bucket doesn't exist, create it
-            const { error: createError } = await supabase.storage.createBucket('avatars', {
-              public: true,
-              fileSizeLimit: 5242880, // 5MB
-            });
-            
-            if (createError) {
-              console.error('Error creating avatars bucket:', createError);
-              throw createError;
-            }
-            
-            // Removed the setPublic call as it's not available in the current SDK version
-          }
-        } catch (bucketError) {
-          console.error('Error handling avatars bucket:', bucketError);
-        }
         
         // Upload the avatar
-        const { error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(filePath, avatarFile, {
+          .upload(fileName, avatarFile, {
             upsert: true,
           });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('Error uploading avatar:', uploadError);
+          throw uploadError;
+        }
+        
+        console.log('Avatar uploaded successfully:', uploadData);
         
         // Get public URL
         const { data: publicUrlData } = supabase.storage
           .from('avatars')
-          .getPublicUrl(filePath);
+          .getPublicUrl(fileName);
           
-        // Add avatar URL to updates
-        Object.assign(updates, { avatar_url: publicUrlData.publicUrl });
+        if (publicUrlData) {
+          console.log('Avatar public URL:', publicUrlData.publicUrl);
+          // Add avatar URL to updates
+          Object.assign(updates, { avatar_url: publicUrlData.publicUrl });
+        }
       }
       
       // Update profile

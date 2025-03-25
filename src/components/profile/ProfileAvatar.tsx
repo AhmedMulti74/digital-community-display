@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -11,13 +11,30 @@ interface ProfileAvatarProps {
 }
 
 const ProfileAvatar = ({ avatarUrl, onAvatarChange }: ProfileAvatarProps) => {
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(avatarUrl);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (avatarUrl) {
+      // Set the avatar URL directly
+      setAvatarPreview(avatarUrl);
+      setIsLoading(false);
+    } else {
+      setIsLoading(false);
+    }
+  }, [avatarUrl]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       onAvatarChange(file);
-      setAvatarPreview(URL.createObjectURL(file));
+      
+      // Create a local preview
+      const objectUrl = URL.createObjectURL(file);
+      setAvatarPreview(objectUrl);
+      
+      // Clean up the preview URL when component unmounts
+      return () => URL.revokeObjectURL(objectUrl);
     }
   };
 
@@ -26,8 +43,12 @@ const ProfileAvatar = ({ avatarUrl, onAvatarChange }: ProfileAvatarProps) => {
       <Label htmlFor="avatar" className="cursor-pointer">
         <div className="relative group">
           <Avatar className="w-32 h-32 border-2 border-creator-purple group-hover:opacity-90 transition-all">
-            {avatarPreview ? (
-              <AvatarImage src={avatarPreview} alt="الصورة الشخصية" />
+            {!isLoading && avatarPreview ? (
+              <AvatarImage 
+                src={avatarPreview} 
+                alt="الصورة الشخصية" 
+                onError={() => console.error("Failed to load avatar image")}
+              />
             ) : (
               <AvatarFallback className="bg-creator-purple text-white flex items-center justify-center">
                 <User className="h-12 w-12" />

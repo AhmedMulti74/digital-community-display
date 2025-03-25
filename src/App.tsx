@@ -18,31 +18,17 @@ import { useEffect } from "react";
 // Create a client
 const queryClient = new QueryClient();
 
-// Check if storage bucket exists and create it if it doesn't
+// More efficient storage bucket check function
 const checkStorageBucket = async () => {
   try {
-    // Try to get bucket information to see if it exists
-    const { data: bucket, error } = await supabase.storage.getBucket('avatars');
+    // Try to get objects from the bucket to test if it exists
+    const { error } = await supabase.storage.from('avatars').list();
     
-    if (error && error.message.includes('does not exist')) {
-      // Bucket doesn't exist, create it
-      const { data, error: createError } = await supabase.storage.createBucket('avatars', {
-        public: true,
-        fileSizeLimit: 5242880, // 5MB
-      });
-      
-      if (createError) {
-        console.error('Error creating avatars bucket:', createError);
-      } else {
-        console.log('Created avatars bucket:', data);
-      }
-    } else if (error) {
-      console.error('Error checking avatars bucket:', error);
+    if (error) {
+      console.error('Error accessing avatars bucket:', error);
     } else {
-      console.log('Avatars bucket exists:', bucket);
+      console.log('Avatars bucket exists and is accessible');
     }
-    
-    // Removed the setPublic call as it's not available in the current SDK version
   } catch (err) {
     console.error('Error in checkStorageBucket:', err);
   }
@@ -50,6 +36,7 @@ const checkStorageBucket = async () => {
 
 const App = () => {
   useEffect(() => {
+    // Check if avatars bucket exists and is accessible
     checkStorageBucket();
   }, []);
 
