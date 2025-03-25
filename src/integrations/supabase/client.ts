@@ -16,7 +16,8 @@ export const supabase = createClient<Database>(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      storageKey: 'creatorhub-auth'
+      storageKey: 'creatorhub-auth',
+      storage: localStorage
     }
   }
 );
