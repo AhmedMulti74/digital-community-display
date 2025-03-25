@@ -1,24 +1,117 @@
-
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Navbar from "@/components/Navbar";
 import { MessageSquare, BookOpen, Calendar, Users, Activity, Info } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const CommunityPage = () => {
-  const { tab = "forum" } = useParams();
+  const { id, tab = "forum" } = useParams();
   const navigate = useNavigate();
+  const [community, setCommunity] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [profiles, setProfiles] = useState({});
+  const [loading, setLoading] = useState(true);
 
-  const handleTabChange = (value: string) => {
-    navigate(`/community/${value}`);
+  useEffect(() => {
+    const fetchCommunity = async () => {
+      if (id) {
+        try {
+          setLoading(true);
+          const { data, error } = await supabase
+            .from('communities')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+          if (error) {
+            console.error('Error fetching community:', error);
+            return;
+          }
+
+          setCommunity(data);
+        } catch (error) {
+          console.error('Failed to fetch community details:', error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchCommunity();
+  }, [id]);
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (id) {
+        try {
+          const { data: membersData, error: membersError } = await supabase
+            .from('community_members')
+            .select('*')
+            .eq('community_id', id);
+
+          if (membersError) {
+            console.error('Error fetching members:', membersError);
+            return;
+          }
+
+          setMembers(membersData || []);
+
+          // Get unique user IDs
+          const userIds = [...new Set(membersData.map(member => member.user_id))];
+          
+          // Fetch profiles for all members
+          if (userIds.length > 0) {
+            const { data: profilesData, error: profilesError } = await supabase
+              .from('profiles')
+              .select('*')
+              .in('id', userIds);
+
+            if (profilesError) {
+              console.error('Error fetching profiles:', profilesError);
+              return;
+            }
+
+            // Create a map of profiles by user ID for easy lookup
+            const profilesMap = {};
+            profilesData?.forEach(profile => {
+              profilesMap[profile.id] = profile;
+            });
+            
+            setProfiles(profilesMap);
+          }
+        } catch (error) {
+          console.error('Failed to fetch members:', error);
+        }
+      }
+    };
+
+    fetchMembers();
+  }, [id]);
+
+  const handleTabChange = (value) => {
+    navigate(`/community/${id}/${value}`);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <Skeleton className="h-12 w-64 mx-auto mb-6" />
+          <Skeleton className="h-10 w-full mb-8" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6 text-center">مجتمع المبدعين</h1>
-        
         <Tabs defaultValue={tab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="w-full justify-between mb-8 overflow-x-auto flex-nowrap">
             <TabsTrigger value="forum" className="flex items-center gap-2">
@@ -60,7 +153,7 @@ const CommunityPage = () => {
           </TabsContent>
           
           <TabsContent value="members" className="mt-6">
-            <MembersSection />
+            <MembersSection members={members} profiles={profiles} />
           </TabsContent>
           
           <TabsContent value="progress" className="mt-6">
@@ -68,7 +161,7 @@ const CommunityPage = () => {
           </TabsContent>
           
           <TabsContent value="about" className="mt-6">
-            <AboutSection />
+            <AboutSection community={community} />
           </TabsContent>
         </Tabs>
       </div>
@@ -76,7 +169,6 @@ const CommunityPage = () => {
   );
 };
 
-// Individual section components
 const ForumSection = () => (
   <div className="bg-card p-6 rounded-lg shadow">
     <h2 className="text-2xl font-bold mb-4">منتدى المجتمع</h2>
@@ -185,28 +277,51 @@ const CalendarSection = () => (
   </div>
 );
 
-const MembersSection = () => (
-  <div className="bg-card p-6 rounded-lg shadow">
-    <h2 className="text-2xl font-bold mb-4">أعضاء المجتمع</h2>
-    <p className="text-muted-foreground">
-      تعرف على أعضاء المجتمع وتواصل معهم لبناء شبكة علاقات قوية.
-    </p>
-    <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-      {Array.from({ length: 8 }).map((_, index) => (
-        <div key={index} className="border rounded-md p-4 flex flex-col items-center">
-          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-            <Users className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="font-medium mt-2">مستخدم {index + 1}</h3>
-          <p className="text-sm text-muted-foreground">عضو منذ {index + 1} أشهر</p>
-          <button className="mt-3 text-sm bg-primary text-primary-foreground px-3 py-1 rounded w-full">
-            تواصل
-          </button>
+const MembersSection = ({ members, profiles }) => {
+  return (
+    <div className="bg-card p-6 rounded-lg shadow">
+      <h2 className="text-2xl font-bold mb-4">أعضاء المجتمع</h2>
+      <p className="text-muted-foreground mb-4">
+        تعرف على أعضاء المجتمع وتواصل معهم لبناء شبكة علاقات قوية.
+      </p>
+      
+      {members.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">لا يوجد أعضاء في هذا المجتمع حتى الآن.</p>
         </div>
-      ))}
+      ) : (
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {members.map((member) => {
+            const profile = profiles[member.user_id] || {};
+            return (
+              <div key={member.id} className="border rounded-md p-4 flex flex-col items-center">
+                <Avatar className="w-16 h-16 mb-2">
+                  {profile.avatar_url ? (
+                    <AvatarImage src={profile.avatar_url} alt={profile.username || 'عضو'} />
+                  ) : (
+                    <AvatarFallback className="bg-primary/20 text-primary">
+                      {profile.username?.charAt(0) || 'U'}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <h3 className="font-medium text-center">{profile.full_name || profile.username || 'عضو'}</h3>
+                <div className="mt-1 px-2 py-1 text-xs bg-primary/10 text-primary rounded-full">
+                  {member.role === 'creator' ? 'مالك المجتمع' : 'عضو'}
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  عضو منذ {new Date(member.joined_at).toLocaleDateString('ar-EG')}
+                </p>
+                <button className="mt-3 text-sm bg-primary text-primary-foreground px-3 py-1 rounded w-full">
+                  تواصل
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 const ProgressSection = () => (
   <div className="bg-card p-6 rounded-lg shadow">
@@ -281,46 +396,90 @@ const ProgressSection = () => (
   </div>
 );
 
-const AboutSection = () => (
-  <div className="bg-card p-6 rounded-lg shadow">
-    <h2 className="text-2xl font-bold mb-4">عن المجتمع</h2>
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-xl font-semibold mb-2">مجتمع المبدعين</h3>
-        <p className="text-muted-foreground">
-          تم تأسيس مجتمع المبدعين بهدف توفير بيئة تفاعلية للمهتمين بمجالات التطوير والإبداع في مختلف المجالات. يسعى المجتمع لبناء شبكة من المبدعين والمطورين وتبادل الخبرات والمعارف.
-        </p>
-      </div>
-      
-      <div>
-        <h3 className="text-xl font-semibold mb-2">رؤيتنا</h3>
-        <p className="text-muted-foreground">
-          نتطلع إلى بناء مجتمع إبداعي رائد يساهم في تطوير المهارات وتنمية القدرات ودعم المبادرات الإبداعية على المستوى المحلي والعالمي.
-        </p>
-      </div>
-      
-      <div>
-        <h3 className="text-xl font-semibold mb-2">أهدافنا</h3>
-        <ul className="list-disc list-inside text-muted-foreground">
-          <li>توفير منصة تفاعلية لتبادل الخبرات والمعارف</li>
-          <li>دعم المبادرات الإبداعية والمشاريع الناشئة</li>
-          <li>تنظيم فعاليات وورش عمل لتطوير المهارات</li>
-          <li>بناء شبكة من العلاقات المهنية والشخصية</li>
-          <li>المساهمة في نشر ثقافة الإبداع والابتكار</li>
-        </ul>
-      </div>
-      
-      <div>
-        <h3 className="text-xl font-semibold mb-2">انضم إلينا</h3>
-        <p className="text-muted-foreground">
-          نرحب بانضمامك إلى مجتمعنا وكن جزءاً من هذه الرحلة الإبداعية. يمكنك التسجيل والمشاركة في المناقشات والفعاليات ومشاركة خبراتك مع الآخرين.
-        </p>
-        <button className="mt-3 bg-primary text-primary-foreground px-4 py-2 rounded">
-          انضم الآن
-        </button>
+const AboutSection = ({ community }) => {
+  if (!community) return <div>جاري التحميل...</div>;
+
+  return (
+    <div className="bg-card p-6 rounded-lg shadow">
+      <h2 className="text-2xl font-bold mb-4">عن المجتمع</h2>
+      <div className="space-y-6">
+        {community.banner_url && (
+          <div className="w-full h-48 overflow-hidden rounded-lg mb-6">
+            <img 
+              src={community.banner_url} 
+              alt={community.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/public/lovable-uploads/3b7bb45a-a281-4e2a-a79f-0a36f3bbb6d0.png";
+              }}
+            />
+          </div>
+        )}
+        
+        <div className="flex items-center space-x-4 rtl:space-x-reverse">
+          {community.logo_url && (
+            <img 
+              src={community.logo_url} 
+              alt={community.name}
+              className="w-16 h-16 rounded-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/public/lovable-uploads/3b7bb45a-a281-4e2a-a79f-0a36f3bbb6d0.png";
+              }}
+            />
+          )}
+          <div>
+            <h3 className="text-xl font-semibold">{community.name}</h3>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="bg-primary/10 text-primary px-2 py-1 rounded-full">
+                {community.language || 'العربية'}
+              </span>
+              <span>•</span>
+              <span>${community.membership_fee}/شهر</span>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <h3 className="text-lg font-semibold mb-2">الوصف</h3>
+          <p className="text-muted-foreground whitespace-pre-wrap">
+            {community.description || 'لا يوجد وصف للمجتمع.'}
+          </p>
+        </div>
+        
+        {community.rules && (
+          <div>
+            <h3 className="text-lg font-semibold mb-2">قواعد المجتمع</h3>
+            <p className="text-muted-foreground whitespace-pre-wrap">
+              {community.rules}
+            </p>
+          </div>
+        )}
+        
+        <div>
+          <h3 className="text-lg font-semibold mb-2">تفاصيل إضافية</h3>
+          <ul className="list-disc list-inside text-muted-foreground space-y-2">
+            <li>الفئة: <span className="text-foreground">{community.category || 'غير محدد'}</span></li>
+            <li>الحد الأقصى للأعضاء: <span className="text-foreground">{community.max_members || 'غير محدد'}</span></li>
+            <li>تاريخ الإنشاء: <span className="text-foreground">{new Date(community.created_at).toLocaleDateString('ar-EG')}</span></li>
+          </ul>
+        </div>
+        
+        {community.video_embed && (
+          <div>
+            <h3 className="text-lg font-semibold mb-2">فيديو تعريفي</h3>
+            <div className="aspect-video rounded-lg overflow-hidden" 
+                 dangerouslySetInnerHTML={{ __html: community.video_embed }} />
+          </div>
+        )}
+        
+        <div className="pt-4">
+          <button className="bg-primary text-primary-foreground px-4 py-2 rounded">
+            انضم الآن - ${community.membership_fee}/شهر
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default CommunityPage;
