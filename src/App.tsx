@@ -41,11 +41,7 @@ const checkStorageBucket = async () => {
       console.log('Avatars bucket exists:', bucket);
     }
     
-    // Set public access policy
-    const { error: policyError } = await supabase.storage.from('avatars').setPublic(true);
-    if (policyError) {
-      console.error('Error setting public policy for avatars bucket:', policyError);
-    }
+    // Removed the setPublic call as it's not available in the current SDK version
   } catch (err) {
     console.error('Error in checkStorageBucket:', err);
   }

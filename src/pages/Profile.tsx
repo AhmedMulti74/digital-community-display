@@ -88,12 +88,7 @@ const Profile = () => {
               throw createError;
             }
             
-            // Set public access policy
-            const { error: policyError } = await supabase.storage.from('avatars').setPublic(true);
-            if (policyError) {
-              console.error('Error setting public policy for avatars bucket:', policyError);
-              throw policyError;
-            }
+            // Removed the setPublic call as it's not available in the current SDK version
           }
         } catch (bucketError) {
           console.error('Error handling avatars bucket:', bucketError);
