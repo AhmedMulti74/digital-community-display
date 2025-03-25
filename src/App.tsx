@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
 import Profile from "./pages/Profile";
 import CreateCommunity from "./pages/CreateCommunity";
+import Community from "./pages/Community";
 import NotFound from "./pages/NotFound";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
@@ -53,6 +54,8 @@ const App = () => {
               <Route path="/signup" element={<SignUp />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/create-community" element={<CreateCommunity />} />
+              <Route path="/community" element={<Community />} />
+              <Route path="/community/:tab" element={<Community />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
