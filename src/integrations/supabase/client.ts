@@ -6,6 +6,11 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://tazohypiucgoiiirxjmx.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhem9oeXBpdWNnb2lpaXJ4am14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI4NTc4NzMsImV4cCI6MjA1ODQzMzg3M30.g0cO0J-CaQp19Oo0DRtqFMkXTQjf6q5p3-Z-5jcmgOE";
 
+// Maximum number of retry attempts for requests
+const MAX_RETRIES = 3;
+// Timeout for requests in milliseconds (10 seconds)
+const REQUEST_TIMEOUT = 10000;
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
@@ -18,6 +23,62 @@ export const supabase = createClient<Database>(
       autoRefreshToken: true,
       storageKey: 'creatorhub-auth',
       storage: localStorage
+    },
+    global: {
+      headers: {
+        'x-application-name': 'creatorhub'
+      },
+      // Set request timeout
+      fetch: (url, options) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+        
+        return fetch(url, {
+          ...options,
+          signal: controller.signal
+        }).finally(() => clearTimeout(timeoutId));
+      }
+    },
+    // Configure auto-retry for failed requests
+    db: {
+      schema: 'public'
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      }
     }
   }
 );
+
+// Utility function to execute Supabase queries with retry logic
+export const executeWithRetry = async (queryFn: () => Promise<any>, maxRetries = MAX_RETRIES) => {
+  let lastError;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await queryFn();
+    } catch (error) {
+      console.warn(`Request failed (attempt ${attempt + 1}/${maxRetries}):`, error);
+      lastError = error;
+      
+      if (error.message?.includes('Failed to fetch') || 
+          error.message?.includes('network') ||
+          error.message?.includes('timeout') ||
+          error.status === 408 || // Request Timeout
+          error.status === 429 || // Too Many Requests
+          error.status >= 500) {  // Server errors
+        
+        // Exponential backoff with jitter
+        const delay = Math.min(1000 * 2 ** attempt + Math.random() * 1000, 8000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      // For other errors, don't retry
+      break;
+    }
+  }
+  
+  throw lastError;
+};

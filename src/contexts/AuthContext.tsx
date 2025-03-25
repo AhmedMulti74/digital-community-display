@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, executeWithRetry } from "@/integrations/supabase/client";
 
 interface AuthContextType {
   session: Session | null;
@@ -14,19 +14,32 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Initialize from localStorage if available
+const getStoredProfile = () => {
+  try {
+    const storedProfile = localStorage.getItem('creatorhub-profile');
+    return storedProfile ? JSON.parse(storedProfile) : null;
+  } catch (error) {
+    console.error("Error parsing stored profile:", error);
+    return null;
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [profile, setProfile] = useState<any | null>(getStoredProfile());
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
+      const { data, error } = await executeWithRetry(() => 
+        supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .single()
+      );
 
       if (error) {
         console.error("Error fetching profile:", error);
@@ -48,16 +61,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    // First try to get stored profile from localStorage
-    const storedProfile = localStorage.getItem('creatorhub-profile');
-    if (storedProfile) {
-      try {
-        setProfile(JSON.parse(storedProfile));
-      } catch (error) {
-        console.error("Error parsing stored profile:", error);
-      }
-    }
-    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -83,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for existing session
     const initializeAuth = async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data } = await executeWithRetry(() => supabase.auth.getSession());
         setSession(data.session);
         setUser(data.session?.user ?? null);
         
@@ -107,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       console.log("Signing out...");
-      const { error } = await supabase.auth.signOut();
+      const { error } = await executeWithRetry(() => supabase.auth.signOut());
       if (error) {
         throw error;
       }

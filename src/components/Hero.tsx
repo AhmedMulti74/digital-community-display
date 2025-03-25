@@ -13,11 +13,25 @@ declare global {
 }
 
 const Hero = () => {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(() => {
+    // Recover search from localStorage if available
+    try {
+      return localStorage.getItem('creatorhub-search') || "";
+    } catch {
+      return "";
+    }
+  });
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
+    
+    // Save to localStorage for persistence across refreshes
+    try {
+      localStorage.setItem('creatorhub-search', query);
+    } catch (error) {
+      console.error("Error saving search to localStorage:", error);
+    }
     
     if (window.communityFilters) {
       window.communityFilters.setSearchQuery(query);
